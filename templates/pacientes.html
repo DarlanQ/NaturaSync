@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+
+{% block title %}Pacientes - NaturaSync{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">👥 Pacientes</h2>
+        <a href="/pacientes/novo" class="btn btn-primary">
+            <i data-lucide="user-plus" style="width: 16px; height: 16px;"></i>
+            Novo Paciente
+        </a>
+    </div>
+    
+    <div class="search-bar">
+        <input type="text" id="searchInput" class="search-input" placeholder="Buscar por nome ou CPF..." onkeyup="filterTable()">
+        <button class="btn btn-success" onclick="location.href='/pacientes/novo'">
+            <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
+            Novo Paciente
+        </button>
+    </div>
+    
+    <div class="table-container">
+        <table class="table" id="pacientesTable">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>CPF</th>
+                    <th>Email</th>
+                    <th>Data Cadastro</th>
+                    <th>Abordagem</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for paciente in pacientes %}
+                <tr>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="width: 40px; height: 40px; background: var(--primary-light); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                <i data-lucide="user" style="width: 20px; height: 20px; color: var(--primary-color);"></i>
+                            </div>
+                            <div>
+                                <div style="font-weight: 500;">{{ paciente.nome }}</div>
+                                <div style="font-size: 12px; color: var(--text-secondary);">{{ paciente.data_nascimento }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>{{ paciente.cpf }}</td>
+                    <td>{{ paciente.email }}</td>
+                    <td>{{ paciente.data_cadastro }}</td>
+                    <td>
+                        {% if paciente.avaliacao_inicial and paciente.avaliacao_inicial.get('abordagem') %}
+                            {% if paciente.avaliacao_inicial.abordagem == 'naturopatia' %}
+                                <span style="padding: 4px 12px; background: var(--primary-light); color: var(--primary-color); border-radius: 20px; font-size: 12px; font-weight: 500;">
+                                    🌿 Naturologia
+                                </span>
+                            {% elif paciente.avaliacao_inicial.abordagem == 'terapia_ocupacional' %}
+                                <span style="padding: 4px 12px; background: var(--secondary-light); color: var(--secondary-color); border-radius: 20px; font-size: 12px; font-weight: 500;">
+                                    💜 Terapia Ocupacional
+                                </span>
+                            {% endif %}
+                        {% else %}
+                            <span style="padding: 4px 12px; background: #f3f4f6; color: #6b7280; border-radius: 20px; font-size: 12px; font-weight: 500;">
+                                Não definida
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="actions">
+                            <button class="btn-icon btn-view" onclick="viewPaciente({{ paciente.id }})" title="Visualizar">
+                                <i data-lucide="eye" style="width: 16px; height: 16px;"></i>
+                            </button>
+                            <button class="btn-icon btn-edit" onclick="location.href='/pacientes/{{ paciente.id }}/editar'" title="Editar">
+                                <i data-lucide="edit-2" style="width: 16px; height: 16px;"></i>
+                            </button>
+                            <button class="btn-icon btn-delete" onclick="deletePaciente({{ paciente.id }})" title="Excluir">
+                                <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        {% if not pacientes %}
+        <div style="text-align: center; padding: 60px 20px; color: var(--text-secondary);">
+            <div style="width: 80px; height: 80px; background: var(--primary-bg); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
+                <i data-lucide="users" style="width: 40px; height: 40px; color: var(--primary-color);"></i>
+            </div>
+            <h3 style="margin-bottom: 10px;">Nenhum paciente cadastrado</h3>
+            <p style="margin-bottom: 20px;">Comece adicionando seu primeiro paciente</p>
+            <a href="/pacientes/novo" class="btn btn-primary">
+                <i data-lucide="user-plus" style="width: 16px; height: 16px;"></i>
+                Adicionar Paciente
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal de Visualização -->
+<div id="viewModal" class="modal">
+    <div class="modal-content" style="max-width: 800px;">
+        <div class="close" onclick="closeViewModal()">&times;</div>
+        <h2 id="modalTitle" style="margin-bottom: 20px;">Detalhes do Paciente</h2>
+        <div id="pacienteDetails"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function filterTable() {
+        const input = document.getElementById('searchInput');
+        const filter = input.value.toUpperCase();
+        const table = document.getElementById('pacientesTable');
+        const tr = table.getElementsByTagName('tr');
+
+        for (let i = 1; i < tr.length; i++) {
+            const nome = tr[i].getElementsByTagName('td')[0]?.textContent || '';
+            const cpf = tr[i].getElementsByTagName('td')[1]?.textContent || '';
+            if (nome.toUpperCase().indexOf(filter) > -1 || cpf.toUpperCase().indexOf(filter) > -1) {
+                tr[i].style.display = '';
+            } else {
+                tr[i].style.display = 'none';
+            }
+        }
+    }
+
+    async function viewPaciente(id) {
+        try {
+            const response = await fetch(`/pacientes/${id}`);
+            const paciente = await response.json();
+            
+            let html = `
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                    <div>
+                        <h3 style="color: var(--primary-color); margin-bottom: 15px;">📋 Dados Básicos</h3>
+                        <div style="background: var(--primary-bg); padding: 15px; border-radius: 8px;">
+                            <p><strong>Nome:</strong> ${paciente.nome}</p>
+                            <p><strong>Data Nascimento:</strong> ${paciente.data_nascimento}</p>
+                            <p><strong>CPF:</strong> ${paciente.cpf}</p>
+                            <p><strong>Email:</strong> ${paciente.email}</p>
+                            <p><strong>Data Cadastro:</strong> ${paciente.data_cadastro}</p>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3 style="color: var(--primary-color); margin-bottom: 15px;">🏥 Anamnese</h3>
+                        <div style="background: var(--primary-bg); padding: 15px; border-radius: 8px;">
+                            <p><strong>Motivo da Consulta:</strong></p>
+                            <p style="margin-left: 10px;">${paciente.motivo_consulta || 'Não informado'}</p>
+                            
+                            <p style="margin-top: 10px;"><strong>Histórico de Saúde:</strong></p>
+                            <p style="margin-left: 10px;">${paciente.historico_saude || 'Não informado'}</p>
+                            
+                            <p style="margin-top: 10px;"><strong>Hábitos de Vida:</strong></p>
+                            <p style="margin-left: 10px;">${paciente.habitos_vida || 'Não informado'}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Avaliação inicial específica
+            if (paciente.avaliacao_inicial) {
+                html += `
+                    <div style="margin-top: 20px;">
+                        <h3 style="color: var(--primary-color); margin-bottom: 15px;">🔍 Avaliação Inicial</h3>
+                        <div style="background: var(--primary-bg); padding: 15px; border-radius: 8px;">
+                            <pre style="white-space: pre-wrap; font-family: inherit; margin: 0;">${JSON.stringify(paciente.avaliacao_inicial, null, 2)}</pre>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Objetivos do tratamento
+            if (paciente.objetivos_tratamento) {
+                html += `
+                    <div style="margin-top: 20px;">
+                        <h3 style="color: var(--primary-color); margin-bottom: 15px;">🎯 Objetivos do Tratamento</h3>
+                        <div style="background: var(--primary-bg); padding: 15px; border-radius: 8px;">
+                            <pre style="white-space: pre-wrap; font-family: inherit; margin: 0;">${JSON.stringify(paciente.objetivos_tratamento, null, 2)}</pre>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // Observações
+            if (paciente.observacoes_gerais) {
+                html += `
+                    <div style="margin-top: 20px;">
+                        <h3 style="color: var(--primary-color); margin-bottom: 15px;">📝 Observações Gerais</h3>
+                        <div style="background: var(--primary-bg); padding: 15px; border-radius: 8px;">
+                            <p>${paciente.observacoes_gerais}</p>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            document.getElementById('pacienteDetails').innerHTML = html;
+            document.getElementById('viewModal').style.display = 'block';
+            
+        } catch (error) {
+            alert('Erro ao carregar paciente');
+        }
+    }
+
+    function closeViewModal() {
+        document.getElementById('viewModal').style.display = 'none';
+    }
+
+    async function deletePaciente(id) {
+        if (confirm('Tem certeza que deseja excluir este paciente? Esta ação não pode ser desfeita.')) {
+            try {
+                const response = await fetch(`/pacientes/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    alert('Erro ao excluir paciente');
+                }
+            } catch (error) {
+                alert('Erro ao excluir paciente');
+            }
+        }
+    }
+
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        const modal = document.getElementById('viewModal');
+        if (event.target == modal) {
+            closeViewModal();
+        }
+    }
+</script>
+{% endblock %}

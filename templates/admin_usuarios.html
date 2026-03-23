@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block title %}Admin - Usuários - NaturaSync{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">👥 Gestão de Usuários</h2>
+        <button class="btn btn-primary" onclick="openCreateModal()">
+            <i data-lucide="user-plus" style="width: 16px; height: 16px;"></i>
+            Novo Usuário
+        </button>
+    </div>
+    
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Usuário</th>
+                    <th>Email</th>
+                    <th>Status</th>
+                    <th>Criado em</th>
+                    <th>Último Login</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for usuario in usuarios %}
+                <tr>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <div style="width: 40px; height: 40px; background: var(--primary-light); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                <i data-lucide="user" style="width: 20px; height: 20px; color: var(--primary-color);"></i>
+                            </div>
+                            <div>
+                                <div style="font-weight: 500;">{{ usuario.username }}</div>
+                                {% if usuario.username == current_user %}
+                                <div style="font-size: 12px; color: var(--text-secondary);">(Você)</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </td>
+                    <td>{{ usuario.email or 'Não informado' }}</td>
+                    <td>
+                        {% if usuario.is_active %}
+                            <span style="padding: 4px 12px; background: #d1fae5; color: #065f46; border-radius: 20px; font-size: 12px; font-weight: 500;">
+                                ✅ Ativo
+                            </span>
+                        {% else %}
+                            <span style="padding: 4px 12px; background: #fee2e2; color: #991b1b; border-radius: 20px; font-size: 12px; font-weight: 500;">
+                                ❌ Inativo
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td>{{ usuario.created_at.strftime('%d/%m/%Y') if usuario.created_at else '-' }}</td>
+                    <td>{{ usuario.last_login.strftime('%d/%m/%Y %H:%M') if usuario.last_login else 'Nunca' }}</td>
+                    <td>
+                        <div class="actions">
+                            <button class="btn-icon btn-edit" onclick="editUser({{ usuario.id }})" title="Editar">
+                                <i data-lucide="edit-2" style="width: 16px; height: 16px;"></i>
+                            </button>
+                            {% if usuario.username != current_user %}
+                            <button class="btn-icon btn-delete" onclick="deleteUser({{ usuario.id }})" title="Excluir">
+                                <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        {% if not usuarios %}
+        <div style="text-align: center; padding: 60px 20px; color: var(--text-secondary);">
+            <div style="width: 80px; height: 80px; background: var(--primary-bg); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
+                <i data-lucide="users" style="width: 40px; height: 40px; color: var(--primary-color);"></i>
+            </div>
+            <h3 style="margin-bottom: 10px;">Nenhum usuário cadastrado</h3>
+            <p style="margin-bottom: 20px;">Comece adicionando o primeiro usuário</p>
+            <button class="btn btn-primary" onclick="openCreateModal()">
+                <i data-lucide="user-plus" style="width: 16px; height: 16px;"></i>
+                Adicionar Usuário
+            </button>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal de Criar/Editar Usuário -->
+<div id="userModal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="close" onclick="closeModal()">&times;</div>
+        <h2 id="modalTitle">Novo Usuário</h2>
+        <form id="userForm">
+            <input type="hidden" id="userId" name="id">
+            
+            <div class="form-group">
+                <label for="username">Usuário *</label>
+                <input type="text" id="username" name="username" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" class="form-control">
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Senha *</label>
+                <input type="password" id="password" name="password" class="form-control" required>
+                <small style="color: var(--text-secondary); font-size: 12px;">Mínimo 6 caracteres</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="confirm_password">Confirmar Senha *</label>
+                <input type="password" id="confirm_password" name="confirm_password" class="form-control" required>
+            </div>
+            
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="is_active" name="is_active" checked>
+                    Usuário Ativo
+                </label>
+            </div>
+            
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let currentUserId = null;
+
+    function openCreateModal() {
+        currentUserId = null;
+        document.getElementById('modalTitle').textContent = 'Novo Usuário';
+        document.getElementById('userForm').reset();
+        document.getElementById('password').required = true;
+        document.getElementById('confirm_password').required = true;
+        document.getElementById('userModal').style.display = 'block';
+    }
+
+    async function editUser(id) {
+        try {
+            const response = await fetch(`/admin/usuarios/${id}`);
+            const user = await response.json();
+            
+            currentUserId = id;
+            document.getElementById('modalTitle').textContent = 'Editar Usuário';
+            
+            document.getElementById('userId').value = user.id;
+            document.getElementById('username').value = user.username;
+            document.getElementById('email').value = user.email || '';
+            document.getElementById('is_active').checked = user.is_active;
+            
+            // Em edição, senha não é obrigatória
+            document.getElementById('password').required = false;
+            document.getElementById('confirm_password').required = false;
+            document.getElementById('password').placeholder = 'Deixe em branco para não alterar';
+            document.getElementById('confirm_password').placeholder = 'Deixe em branco para não alterar';
+            
+            document.getElementById('userModal').style.display = 'block';
+        } catch (error) {
+            alert('Erro ao carregar usuário');
+        }
+    }
+
+    function closeModal() {
+        document.getElementById('userModal').style.display = 'none';
+        document.getElementById('userForm').reset();
+        document.getElementById('password').placeholder = '';
+        document.getElementById('confirm_password').placeholder = '';
+    }
+
+    async function deleteUser(id) {
+        if (confirm('Tem certeza que deseja excluir este usuário? Esta ação não pode ser desfeita.')) {
+            try {
+                const response = await fetch(`/admin/usuarios/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    location.reload();
+                } else {
+                    alert('Erro ao excluir usuário');
+                }
+            } catch (error) {
+                alert('Erro ao excluir usuário');
+            }
+        }
+    }
+
+    document.getElementById('userForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = new FormData(e.target);
+        const data = Object.fromEntries(formData);
+        
+        // Validar senhas
+        if (data.password || data.confirm_password) {
+            if (data.password !== data.confirm_password) {
+                alert('As senhas não coincidem!');
+                return;
+            }
+            
+            if (data.password.length < 6) {
+                alert('A senha deve ter pelo menos 6 caracteres!');
+                return;
+            }
+        }
+        
+        try {
+            const url = currentUserId ? `/admin/usuarios/${currentUserId}` : '/admin/usuarios';
+            const method = currentUserId ? 'PUT' : 'POST';
+            
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
+            
+            if (response.ok) {
+                location.reload();
+            } else {
+                const error = await response.json();
+                alert(error.detail || 'Erro ao salvar usuário');
+            }
+        } catch (error) {
+            alert('Erro ao salvar usuário');
+        }
+    });
+
+    // Close modal when clicking outside
+    window.onclick = function(event) {
+        const modal = document.getElementById('userModal');
+        if (event.target == modal) {
+            closeModal();
+        }
+    }
+</script>
+{% endblock %}

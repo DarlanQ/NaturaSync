@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}Alterar Senha - NaturaSync{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 500px; margin: 0 auto;">
+    <div class="card-header">
+        <h2 class="card-title">🔐 Alterar Senha</h2>
+        <a href="/dashboard" class="btn btn-secondary">
+            <i data-lucide="arrow-left" style="width: 16px; height: 16px;"></i>
+            Voltar
+        </a>
+    </div>
+    
+    <form method="POST" id="senhaForm">
+        <div class="form-group">
+            <label for="senha_atual">Senha Atual *</label>
+            <input type="password" id="senha_atual" name="senha_atual" class="form-control" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="nova_senha">Nova Senha *</label>
+            <input type="password" id="nova_senha" name="nova_senha" class="form-control" required>
+            <small style="color: var(--text-secondary); font-size: 12px;">Mínimo 6 caracteres</small>
+        </div>
+        
+        <div class="form-group">
+            <label for="confirmar_senha">Confirmar Nova Senha *</label>
+            <input type="password" id="confirmar_senha" name="confirmar_senha" class="form-control" required>
+        </div>
+        
+        <div style="display: flex; gap: 15px; justify-content: flex-end; margin-top: 30px;">
+            <a href="/dashboard" class="btn btn-secondary">
+                <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+                Cancelar
+            </a>
+            <button type="submit" class="btn btn-primary">
+                <i data-lucide="save" style="width: 16px; height: 16px;"></i>
+                Alterar Senha
+            </button>
+        </div>
+    </form>
+</div>
+
+<div id="successMessage" style="display: none; position: fixed; top: 20px; right: 20px; background: #10b981; color: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+    <div style="display: flex; align-items: center; gap: 10px;">
+        <i data-lucide="check-circle" style="width: 20px; height: 20px;"></i>
+        <span>Senha alterada com sucesso!</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('senhaForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const senhaAtual = document.getElementById('senha_atual').value;
+        const novaSenha = document.getElementById('nova_senha').value;
+        const confirmarSenha = document.getElementById('confirmar_senha').value;
+        
+        // Validações
+        if (novaSenha !== confirmarSenha) {
+            alert('A nova senha e a confirmação não coincidem!');
+            return;
+        }
+        
+        if (novaSenha.length < 6) {
+            alert('A nova senha deve ter pelo menos 6 caracteres!');
+            return;
+        }
+        
+        if (senhaAtual === novaSenha) {
+            alert('A nova senha deve ser diferente da senha atual!');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/perfil/alterar-senha', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    senha_atual: senhaAtual,
+                    nova_senha: novaSenha
+                })
+            });
+            
+            if (response.ok) {
+                // Mostrar mensagem de sucesso
+                const successDiv = document.getElementById('successMessage');
+                successDiv.style.display = 'block';
+                
+                // Limpar formulário
+                document.getElementById('senhaForm').reset();
+                
+                // Esconder mensagem após 3 segundos
+                setTimeout(() => {
+                    successDiv.style.display = 'none';
+                }, 3000);
+                
+                // Recriar ícones
+                lucide.createIcons();
+            } else {
+                const error = await response.json();
+                alert(error.detail || 'Erro ao alterar senha');
+            }
+        } catch (error) {
+            alert('Erro ao alterar senha');
+        }
+    });
+</script>
+{% endblock %}
